@@ -30,5 +30,6 @@ class BotSettings(DataClassJsonMixin):
     hiscores: Hiscores
 
 
+# load the bot settings, fails when the json format is incorrect
 with open(os.environ.get('BOT_SETTINGS', 'bot_settings.json'), 'r') as file:
-    BOT_SETTINGS = BotSettings.from_dict(json.load(file))
+    BOT_SETTINGS = BotSettings.from_dict(json.load(file))   # budget singleton

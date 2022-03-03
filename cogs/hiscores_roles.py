@@ -13,7 +13,7 @@ class RoleUpdater:
     def __init__(self):
         self.__hiscores = Hiscores()
 
-    def refresh_highscores(self):
+    def refresh_hiscores(self):
         return self.__hiscores.refresh()
 
     async def update_user(self, member, name):
@@ -87,7 +87,7 @@ class HiscoresRolesBot(interactions.Extension):
             await ctx.send("Only admins are allowed to approve or decline highscore roles.", ephemeral=True)
             return
 
-        if not self.role_updater.refresh_highscores():
+        if not self.role_updater.refresh_hiscores():
             await ctx.send("Failed to load hiscores, try again later.", ephemeral=True)
             return
 
@@ -142,13 +142,14 @@ class HiscoresRolesBot(interactions.Extension):
             await ctx.send("Only admins are allowed to update roles.", ephemeral=True)
             return
 
-        if not self.role_updater.refresh_highscores():
+        if not self.role_updater.refresh_hiscores():
             await ctx.send("Failed to load hiscores, try again later.", ephemeral=True)
             return
 
-        await ctx.defer()
-        guild = await self.__get_guild_from_context(ctx)
+        await ctx.defer()   # prevent failing the command when there is no response within 3 seconds
 
+        # update the roles of all users in user_settings.json
+        guild = await self.__get_guild_from_context(ctx)
         for user_id, name in self.user_settings.settings.items():
             member = await self.__get_member_by_id(guild, user_id)
             if member:
@@ -175,6 +176,7 @@ class HiscoresRolesBot(interactions.Extension):
             print(e)
         else:
             return member
+
 
 def setup(client):
     HiscoresRolesBot(client)

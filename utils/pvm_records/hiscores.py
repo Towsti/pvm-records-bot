@@ -5,7 +5,6 @@ import requests
 
 @dataclass(frozen=True)
 class Entry:
-    """Hiscore entry."""
     id: int
     rank: int
     name: str
@@ -53,6 +52,11 @@ class Hiscores:
         self.entries = list()
 
     def __request_hiscores(self):
+        """Request the most recent version of the hiscores page.
+
+        :return: request response as a list of entries
+        :rtype: list[dict]
+        """
         data = None
         try:
             response = requests.get(Hiscores.ENDPOINT)
@@ -67,6 +71,12 @@ class Hiscores:
             return data
 
     def refresh(self):
+        """Refresh the hiscores entries with the latest version of pvm-records/hiscores.
+        The entries are only updated on a successful refresh.
+
+        :return: refresh successful (True), refresh failed (False)
+        :rtype: bool
+        """
         data = self.__request_hiscores()
         if data:
             self.entries = [Entry(**entry) for entry in data]
@@ -77,5 +87,11 @@ class Hiscores:
         return refreshed
 
     def get_entry_by_name(self, name):
+        """Search for a specifc hiscores entry using the name.
+
+        :param str name: name (rsn) of the entry to search for
+        :return: a single entry containing the name and other stats or an empty entry when the name isn't found.
+        :rtype: Entry
+        """
         return next((entry for entry in self.entries if entry.name == name),
                     Entry(0, 0, name, 0, 0, 0, 0))

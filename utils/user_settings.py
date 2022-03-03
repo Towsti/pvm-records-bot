@@ -7,7 +7,6 @@ class UserSettingsControl:
 
     def __init__(self):
         self.__settings = dict()
-
         self.__load_json()
 
     @property
