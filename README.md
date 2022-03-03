@@ -34,3 +34,14 @@ Run:
 ```
 pipenv run python main.py
 ```
+
+## Commands
+
+| Command                      | Arguments    | Description                                           |
+| ---------------------------- | ------------ | ----------------------------------------------------- |
+| `enable-hiscore-roles`       | `name`       | Enable hiscore roles for the user using the command.  |
+| `disable-hiscores-roles`     | -            | Disable hiscore roles for the user using the command. |
+| `admin-disable-user-roles`   | `id`         | TODO                                                  |
+| `admin-enable-hiscore-roles` | `id`, `name` | TODO                                                  |
+| `update-roles`               |              | Update roles (used as context menu option).           |
+
