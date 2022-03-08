@@ -35,6 +35,14 @@ Run:
 pipenv run python main.py
 ```
 
+## Deployment
+
+Generate `requirements.txt`:
+
+```
+pipenv lock -r > requirements.txt
+```
+
 ## Commands
 
 | Command                      | Arguments    | Description                                           |
