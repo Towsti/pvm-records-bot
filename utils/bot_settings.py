@@ -10,7 +10,7 @@ load_dotenv()
 
 
 @dataclass(frozen=True)
-class Roles(DataClassJsonMixin):
+class HiscoreRoles(DataClassJsonMixin):
     hiscores_leader: int
     first_place_holder: int
     second_place_holder: int
@@ -19,15 +19,11 @@ class Roles(DataClassJsonMixin):
 
 
 @dataclass(frozen=True)
-class Hiscores(DataClassJsonMixin):
-    approval_role: int
-    roles: Roles
-
-
-@dataclass(frozen=True)
 class BotSettings(DataClassJsonMixin):
     guild: int
-    hiscores: Hiscores
+    admin_channel: int
+    admin_role: int
+    hiscore_roles: HiscoreRoles
 
 
 # load the bot settings, fails when the json format is incorrect
