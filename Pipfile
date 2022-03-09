@@ -12,6 +12,6 @@ discord-py-interactions = "*"
 python-dotenv = "*"
 requests = "*"
 dataclasses-json = "*"
-psycopg = {extras = ["binary", "pool"], version = "*"}
+psycopg = {extras = ["binary"], version = "*"}
 
 [dev-packages]
