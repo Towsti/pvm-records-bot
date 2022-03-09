@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import interactions
 
-from utils.user_settings import UserSettingsControl
+from utils.user_settings import UserSettings, User
 from utils.pvm_records.hiscores import Hiscores
 from utils.bot_settings import BOT_SETTINGS
 from utils.request_embed import RequestData, RequestEmbed
@@ -94,7 +94,7 @@ class RoleUpdater:
 class HiscoresRolesBot(interactions.Extension):
     def __init__(self, client):
         self.client = client
-        self.user_settings = UserSettingsControl()
+        self.user_settings = UserSettings()
         self.role_updater = RoleUpdater()
 
     @interactions.extension_command(
@@ -111,7 +111,7 @@ class HiscoresRolesBot(interactions.Extension):
         ]
     )
     async def enable_hiscores_roles(self, ctx, name):
-        if name in self.user_settings.settings.values():
+        if await self.user_settings.get_user_by_name(name):
             return await ctx.send(f"Hiscore roles already enabled for {name}.")
 
         await ctx.send(f"Awaiting approval to enable hiscore roles for {name}.")
@@ -149,25 +149,21 @@ class HiscoresRolesBot(interactions.Extension):
 
         await self.__enable_hiscore_roles(ctx, request.user_id, request.hiscores_name)
 
-        message = await self.__get_original_request_message(ctx, request.channel_id, request.message_id)
+        request_message = await self.__get_original_request_message(ctx, request.channel_id, request.message_id)
+        await request_message.reply(f"<@{request.user_id}>, request approved.")
 
-        # update the original request and admin approval message
-        approve_message = f"<@{request.user_id}> request to enable hiscore roles for {request.hiscores_name} approved."
-        await message.reply(f"<@{request.user_id}>, request approved.")
-
-        await ctx.edit(approve_message, embeds=None, components=None)
+        await ctx.edit(f"<@{request.user_id}> request to enable hiscore roles for {request.hiscores_name} approved.",
+                       embeds=None, components=None)
 
     @interactions.extension_component("decline")
     async def declined(self, ctx):
-        # request = RequestMessageProperties.from_message_content(ctx.message.content)
         request = HiscoreRequest.from_embed(ctx.message.embeds[0])
 
-        message = await self.__get_original_request_message(ctx, request.channel_id, request.message_id)
+        request_message = await self.__get_original_request_message(ctx, request.channel_id, request.message_id)
+        await request_message.reply(f"<@{request.user_id}>, request declined.")
 
-        # update the original request and admin decline message
-        decline_message = f"<@{request.user_id}> request to enable hiscore roles for {request.hiscores_name} declined."
-        await message.reply(f"<@{request.user_id}>, request declined.")
-        await ctx.edit(decline_message, embeds=None, components=None)
+        await ctx.edit(f"<@{request.user_id}> request to enable hiscore roles for {request.hiscores_name} declined.",
+                       embeds=None, components=None)
 
     @interactions.extension_command(
         name="disable-hiscores-roles",
@@ -175,18 +171,16 @@ class HiscoresRolesBot(interactions.Extension):
         scope=BOT_SETTINGS.guild
     )
     async def disable_hiscores_roles(self, ctx):
-        user_id = str(ctx.author.id)
-
-        if user_id in self.user_settings.settings:
+        if user := await self.user_settings.get_user_by_id(int(ctx.author.id)):
             await self.role_updater.remove_roles(ctx.author)
-            name = self.user_settings.remove(user_id)
-            await ctx.send(f"Disabled hiscores roles for {name}.", ephemeral=True)
+            await self.user_settings.delete(user.user_id)
+            await ctx.send(f"Disabled hiscores roles for {user.hiscores_name}.")
         else:
-            await ctx.send(f"Hiscores roles already disabled.", ephemeral=True)
+            await ctx.send(f"Hiscores roles already disabled.")
 
     @interactions.extension_command(
-        type=interactions.ApplicationCommandType.USER,
-        name="Update roles",
+        name="update-roles",
+        description="Refresh roles manually (only for admins)",
         scope=BOT_SETTINGS.guild
     )
     async def update_roles_manually(self, ctx):
@@ -208,10 +202,10 @@ class HiscoresRolesBot(interactions.Extension):
         :param Union[interactions.CommandContext, interactions.ComponentContext] ctx: command/component context
         """
         guild = await ctx.get_guild()
-        for user_id, name in self.user_settings.settings.items():
-            member = await self.__get_member_by_id(guild, int(user_id))
+        for user in await self.user_settings.get_users():
+            member = await self.__get_member_by_id(guild, user.user_id)
             if member:
-                await self.role_updater.update_user(member, name)
+                await self.role_updater.update_user(member, user.hiscores_name)
 
     async def __enable_hiscore_roles(self, ctx, user_id, name):
         """Enable hiscores roles for a new user, generally called after approving a role request.
@@ -222,7 +216,7 @@ class HiscoresRolesBot(interactions.Extension):
         """
         guild = await ctx.get_guild()
         request_author = await self.__get_member_by_id(guild, user_id)
-        self.user_settings.update(str(user_id), name)
+        await self.user_settings.update(User(user_id, name))
         await self.role_updater.update_user(request_author, name)
 
     async def __get_original_request_message(self, ctx, channel_id, message_id):
