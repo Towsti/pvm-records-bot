@@ -2,28 +2,30 @@ import re
 from dataclasses import dataclass
 
 import interactions
-from dataclasses_json import DataClassJsonMixin
 
 from utils.user_settings import UserSettingsControl
 from utils.pvm_records.hiscores import Hiscores
 from utils.bot_settings import BOT_SETTINGS
+from utils.request_embed import RequestData, RequestEmbed
 
 
 @dataclass(frozen=True)
-class RequestMessageProperties(DataClassJsonMixin):
-    user_id: int
-    message_id: int
+class HiscoreRequest:
+    USER_ID_FIELD = "User ID"
+    HISCORES_NAME_FIELD = "Hiscore name"
+
     channel_id: int
+    message_id: int
+    user_id: int
     hiscores_name: str
 
     @classmethod
-    def from_message_content(cls, content):
-        result = re.search(r"```json\n(.*?)\n```", content)
-
-        return cls.from_json(result.group(1))
-
-    def to_message_content(self):
-        return f"```json\n{self.to_json()}\n```"
+    def from_embed(cls, embed):
+        request = RequestData.from_embed(embed)
+        result = re.match(r"<@(\d{18})>", request.fields[HiscoreRequest.USER_ID_FIELD])
+        return cls(channel_id=request.channel_id, message_id=request.message_id,
+                   user_id=int(result.group(1)),
+                   hiscores_name=request.fields[HiscoreRequest.HISCORES_NAME_FIELD])
 
 
 class RoleUpdater:
@@ -45,7 +47,6 @@ class RoleUpdater:
         :param interactions.Member member: discord user to update roles for
         :param name: hiscores name for the user
         """
-
         # todo: check change settings option to update all roles at once
         entry = self.__hiscores.get_entry_by_name(name)
 
@@ -115,46 +116,58 @@ class HiscoresRolesBot(interactions.Extension):
 
         await ctx.send(f"Awaiting approval to enable hiscore roles for {name}.")
 
-        properties = RequestMessageProperties(user_id=int(ctx.author.id), message_id=int(ctx.message.id),
-                                              channel_id=int(ctx.channel_id), hiscores_name=name)
-
         admin_channel = interactions.Channel(**await ctx.client.get_channel(BOT_SETTINGS.admin_channel),
                                              _client=ctx.client)
 
         approval_row = interactions.ActionRow(components=[
             interactions.Button(style=interactions.ButtonStyle.SUCCESS, label="Approve", custom_id="approve"),
-            interactions.Button(style=interactions.ButtonStyle.DANGER, label="Decline", custom_id="decline")])
+            interactions.Button(style=interactions.ButtonStyle.DANGER, label="Decline", custom_id="decline")]
+        )
 
-        await admin_channel.send(properties.to_message_content() +
-                                 f"{ctx.author.mention} requesting to enable hiscore roles for {name}.",
-                                 components=approval_row)
+        fields = [
+            interactions.EmbedField(
+                name=HiscoreRequest.USER_ID_FIELD,
+                value=str(ctx.author.mention),
+                inline=True
+            ),
+            interactions.EmbedField(
+                name=HiscoreRequest.HISCORES_NAME_FIELD,
+                value=name,
+                inline=True
+            )
+        ]
+        request_embed = RequestEmbed.get_embed(ctx, title="Hiscore roles request", color=0x0099ff, fields=fields)
+
+        await admin_channel.send(embeds=request_embed, components=approval_row)
 
     @interactions.extension_component("approve")
     async def approved(self, ctx):
         if not self.role_updater.refresh_hiscores():
             return await ctx.send("Failed to load hiscores, try again later.", ephemeral=True)
 
-        request = RequestMessageProperties.from_message_content(ctx.message.content)
+        request = HiscoreRequest.from_embed(ctx.message.embeds[0])
 
         await self.__enable_hiscore_roles(ctx, request.user_id, request.hiscores_name)
 
         message = await self.__get_original_request_message(ctx, request.channel_id, request.message_id)
 
         # update the original request and admin approval message
-        approve_message = f"request to enable hiscore roles for {request.hiscores_name} approved"
-        await message.edit(approve_message)
-        await ctx.edit(approve_message, components=None)
+        approve_message = f"<@{request.user_id}> request to enable hiscore roles for {request.hiscores_name} approved."
+        await message.reply(f"<@{request.user_id}>, request approved.")
+
+        await ctx.edit(approve_message, embeds=None, components=None)
 
     @interactions.extension_component("decline")
     async def declined(self, ctx):
-        request = RequestMessageProperties.from_message_content(ctx.message.content)
+        # request = RequestMessageProperties.from_message_content(ctx.message.content)
+        request = HiscoreRequest.from_embed(ctx.message.embeds[0])
 
         message = await self.__get_original_request_message(ctx, request.channel_id, request.message_id)
 
         # update the original request and admin decline message
-        decline_message = f"request to enable hiscore roles for {request.hiscores_name} declined"
-        await message.edit(decline_message)
-        await ctx.edit(decline_message, components=None)
+        decline_message = f"<@{request.user_id}> request to enable hiscore roles for {request.hiscores_name} declined."
+        await message.reply(f"<@{request.user_id}>, request declined.")
+        await ctx.edit(decline_message, embeds=None, components=None)
 
     @interactions.extension_command(
         name="disable-hiscores-roles",
@@ -167,9 +180,9 @@ class HiscoresRolesBot(interactions.Extension):
         if user_id in self.user_settings.settings:
             await self.role_updater.remove_roles(ctx.author)
             name = self.user_settings.remove(user_id)
-            await ctx.send(f"Disabled hiscores roles for {name}.")
+            await ctx.send(f"Disabled hiscores roles for {name}.", ephemeral=True)
         else:
-            await ctx.send(f"Hiscores roles already disabled.")
+            await ctx.send(f"Hiscores roles already disabled.", ephemeral=True)
 
     @interactions.extension_command(
         type=interactions.ApplicationCommandType.USER,
