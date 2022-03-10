@@ -228,8 +228,7 @@ class HiscoresRolesBot(interactions.Extension):
         :return: original request message
         :rtype: interactions.Message
         """
-        channel = interactions.Channel(**await ctx.client.get_channel(channel_id),
-                                       _client=ctx.client)
+        channel = interactions.Channel(**await ctx.client.get_channel(channel_id), _client=ctx.client)
         return await channel.get_message(message_id)
 
     async def __get_member_by_id(self, guild, user_id):
