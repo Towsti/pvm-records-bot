@@ -27,11 +27,42 @@ class Database(metaclass=SingletonMeta):
     DATABASE_URL = os.getenv('DATABASE_URL')
 
     def __init__(self):
-        self._pool = ConnectionPool(Database.DATABASE_URL, min_size=0, max_size=5)
-        atexit.register(self._pool.close)
+        self.__pool = ConnectionPool(Database.DATABASE_URL, min_size=0, max_size=5)
+        atexit.register(self.__pool.close)
 
     @contextmanager
-    def _query(self):
-        with self._pool.connection() as conn:
+    def query(self):
+        with self.__pool.connection() as conn:
             with conn.cursor() as cur:
                 yield conn, cur
+
+
+class DatabaseClient(metaclass=SingletonMeta):
+    """Should be inherited by clients.
+    Every client should interact with a table (e.g. UserSettings).
+    Singleton for DatabaseClient + Database ensures that there is only 1 Database() instance.
+    There can be multiple clients but only 1 instance of each client.
+
+    Example
+    -------
+    # utils/database/user_settings.py
+    class UserSettings(DatabaseClient)
+
+    # utils/database/seasonals.py
+    class SeasonalSettings(DatabaseClient)
+
+    # cogs/hiscore_roles.py
+    user_settings = UserSettings()
+
+    # cogs/seasonals.py
+    user_settings = UserSettings()
+    seasonal_settings = SeasonalSettings()
+
+    # validation
+    assert hiscore_roles.user_settings == seasonals.user_settings
+    assert hiscore_roles.user_settings != seasonals.seasonal_settings
+    assert seasonals.user_settings != seasonals.seasonal_settings
+    assert hiscore_roles.user_settings._database == seasonals.user_settings._database == seasonals.seasonal_settings
+    """
+    def __init__(self):
+        self._database = Database()
