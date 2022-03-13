@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import interactions
 
-from utils.user_settings import UserSettings, User
+from utils.database.user_settings import UserSettings, User
 from utils.pvm_records.hiscores import Hiscores
 from utils.bot_settings import BOT_SETTINGS
 from utils.request_embed import RequestData, RequestEmbed
@@ -98,6 +98,22 @@ class HiscoresRolesBot(interactions.Extension):
         self.role_updater = RoleUpdater()
 
     @interactions.extension_command(
+        name="debug",
+        description="h",
+        scope=BOT_SETTINGS.guild
+    )
+    async def debug(self, ctx):
+        # interactions.Client
+        guild_kwargs = await self.client._http.get_guild(BOT_SETTINGS.guild)
+        guild = interactions.Guild(**guild_kwargs)
+        for user in self.user_settings.get_users():
+            member = await self.__get_member_by_id(guild, user.user_id)
+            if member:
+                await self.role_updater.update_user(member, user.hiscores_name)
+        await ctx.send("done")
+
+
+    @interactions.extension_command(
         name="enable-hiscores-roles",
         description="Enable discord roles based on pvm-records.com/hiscores.",
         scope=BOT_SETTINGS.guild,
@@ -111,7 +127,7 @@ class HiscoresRolesBot(interactions.Extension):
         ]
     )
     async def enable_hiscores_roles(self, ctx, name):
-        if await self.user_settings.get_user_by_name(name):
+        if self.user_settings.get_user_by_hiscores_name(name):
             return await ctx.send(f"Hiscore roles already enabled for {name}.")
 
         await ctx.send(f"Awaiting approval to enable hiscore roles for {name}.")
@@ -171,9 +187,9 @@ class HiscoresRolesBot(interactions.Extension):
         scope=BOT_SETTINGS.guild
     )
     async def disable_hiscores_roles(self, ctx):
-        if user := await self.user_settings.get_user_by_id(int(ctx.author.id)):
+        if user := self.user_settings.get_user_by_id(int(ctx.author.id)):
             await self.role_updater.remove_roles(ctx.author)
-            await self.user_settings.delete(user.user_id)
+            self.user_settings.delete(user.user_id)
             await ctx.send(f"Disabled hiscores roles for {user.hiscores_name}.")
         else:
             await ctx.send(f"Hiscores roles already disabled.")
@@ -202,7 +218,7 @@ class HiscoresRolesBot(interactions.Extension):
         :param Union[interactions.CommandContext, interactions.ComponentContext] ctx: command/component context
         """
         guild = await ctx.get_guild()
-        for user in await self.user_settings.get_users():
+        for user in self.user_settings.get_users():
             member = await self.__get_member_by_id(guild, user.user_id)
             if member:
                 await self.role_updater.update_user(member, user.hiscores_name)
@@ -216,7 +232,7 @@ class HiscoresRolesBot(interactions.Extension):
         """
         guild = await ctx.get_guild()
         request_author = await self.__get_member_by_id(guild, user_id)
-        await self.user_settings.update(User(user_id, name))
+        self.user_settings.update(User(user_id, name))
         await self.role_updater.update_user(request_author, name)
 
     async def __get_original_request_message(self, ctx, channel_id, message_id):

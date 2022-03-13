@@ -1,9 +1,11 @@
 import os
+import logging
 
 from dotenv import load_dotenv
 import interactions
 
 
+logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 
