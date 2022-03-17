@@ -1,5 +1,6 @@
 import re
 from dataclasses import dataclass
+import logging
 
 import interactions
 
@@ -9,13 +10,14 @@ from utils.bot_settings import BOT_SETTINGS
 from utils.request_embed import RequestData, RequestEmbed
 
 
+logger = logging.getLogger(__name__)
+
+
 @dataclass(frozen=True)
-class HiscoreRequest:
+class HiscoreRequest(RequestData):
     USER_ID_FIELD = "User ID"
     HISCORES_NAME_FIELD = "Hiscore name"
 
-    channel_id: int
-    message_id: int
     user_id: int
     hiscores_name: str
 
@@ -23,7 +25,7 @@ class HiscoreRequest:
     def from_embed(cls, embed):
         request = RequestData.from_embed(embed)
         result = re.match(r"<@(\d{18})>", request.fields[HiscoreRequest.USER_ID_FIELD])
-        return cls(channel_id=request.channel_id, message_id=request.message_id,
+        return cls(**request.__dict__,
                    user_id=int(result.group(1)),
                    hiscores_name=request.fields[HiscoreRequest.HISCORES_NAME_FIELD])
 
@@ -47,7 +49,6 @@ class RoleUpdater:
         :param interactions.Member member: discord user to update roles for
         :param name: hiscores name for the user
         """
-        # todo: check change settings option to update all roles at once
         entry = self.__hiscores.get_entry_by_name(name)
 
         await self.__update_role(member, BOT_SETTINGS.hiscore_roles.hiscores_leader, entry.is_hiscores_leader())
@@ -90,6 +91,43 @@ class RoleUpdater:
             if role_id in member.roles:
                 await member.remove_role(role_id, BOT_SETTINGS.guild)
 
+    async def clear_roles_for_non_configured_users(self, http_client, guild_members, users):
+        """Clear hiscore roles for users that aren't configured in the users database.
+        Recommended to follow this up up by the update-roles command.
+
+        Yes very ugly method but I hope it's temporary.
+        The on_guild_create(guild) event obtains a different Guild instance as ctx.get_guild().
+        The guild obtained from on_guild_create obtains all members but the Member instance cannot be used to
+        set/reset roles. This can only be done using interaction.HTTPClient.remove_member_role()
+
+
+        :param interactions.HTTPClient http_client: bot client
+        :param List[interactions.Member] guild_members: list of guild members that are updated
+        :param List[User] users: list of users configured in the users database
+        """
+        def check_member_configured(member_id):
+            for user in users:
+                if member_id == user.user_id:
+                    return True
+            else:
+                return False
+
+        async def clear_role(member, role_id):
+            if role_id in member.roles:
+                await http_client.remove_member_role(BOT_SETTINGS.guild, member.id, role_id)
+
+        async def clear_roles(member):
+            await clear_role(member, BOT_SETTINGS.hiscore_roles.hiscores_leader)
+            await clear_role(member, BOT_SETTINGS.hiscore_roles.first_place_holder)
+            await clear_role(member, BOT_SETTINGS.hiscore_roles.second_place_holder)
+            await clear_role(member, BOT_SETTINGS.hiscore_roles.third_place_holder)
+            for _, role_id in BOT_SETTINGS.hiscore_roles.scores:
+                await clear_role(member, role_id)
+
+        for member in guild_members:
+            if not check_member_configured(int(member.id)):
+                await clear_roles(member)
+
 
 class HiscoresRolesBot(interactions.Extension):
     def __init__(self, client):
@@ -97,21 +135,11 @@ class HiscoresRolesBot(interactions.Extension):
         self.user_settings = UserSettings()
         self.role_updater = RoleUpdater()
 
-    @interactions.extension_command(
-        name="debug",
-        description="h",
-        scope=BOT_SETTINGS.guild
-    )
-    async def debug(self, ctx):
-        # interactions.Client
-        guild_kwargs = await self.client._http.get_guild(BOT_SETTINGS.guild)
-        guild = interactions.Guild(**guild_kwargs)
-        for user in self.user_settings.get_users():
-            member = await self.__get_member_by_id(guild, user.user_id)
-            if member:
-                await self.role_updater.update_user(member, user.hiscores_name)
-        await ctx.send("done")
-
+    @interactions.extension_listener()
+    async def on_guild_create(self, guild):
+        users = self.user_settings.get_users()
+        await self.role_updater.clear_roles_for_non_configured_users(self.client._http, guild.members, users)
+        logger.info("bot ready")
 
     @interactions.extension_command(
         name="enable-hiscores-roles",
@@ -218,6 +246,7 @@ class HiscoresRolesBot(interactions.Extension):
         :param Union[interactions.CommandContext, interactions.ComponentContext] ctx: command/component context
         """
         guild = await ctx.get_guild()
+        print(guild)
         for user in self.user_settings.get_users():
             member = await self.__get_member_by_id(guild, user.user_id)
             if member:
@@ -258,7 +287,7 @@ class HiscoresRolesBot(interactions.Extension):
         try:
             member = await guild.get_member(user_id)
         except Exception as e:
-            print(e)
+            logger.warning(e)
         else:
             return member
 

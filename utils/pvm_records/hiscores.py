@@ -1,6 +1,10 @@
+import logging
 from dataclasses import dataclass
 
 import requests
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -61,12 +65,12 @@ class Hiscores:
         try:
             response = requests.get(Hiscores.ENDPOINT)
         except requests.exceptions.RequestException as e:
-            print(f"Request error: {e}")
+            logger.warning(f"Request error: {e}")
         else:
             if response.status_code == 200:
                 data = response.json()
             else:
-                print(f"Request error, status code: {response.status_code}")
+                logger.warning(f"Request error, status code: {response.status_code}")
         finally:
             return data
 

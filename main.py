@@ -9,7 +9,8 @@ logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 
-client = interactions.Client(token=os.getenv('TOKEN'), intents=interactions.Intents.DEFAULT)
+client = interactions.Client(token=os.getenv('TOKEN'),
+                             intents=interactions.Intents.DEFAULT | interactions.Intents.GUILD_PRESENCES)
 
 # load all cogs in cogs/ folder
 for filename in os.listdir("./cogs"):
