@@ -34,14 +34,14 @@ class RoleUpdater:
     def __init__(self):
         self.__hiscores = Hiscores()
 
-    def refresh_hiscores(self):
+    async def refresh_hiscores(self):
         """Refresh the hiscores entries with the latest version of pvm-records/hiscores.
         The entries are only updated on a successful refresh.
 
         :return: refresh successful (True), refresh failed (False)
         :rtype: bool
         """
-        return self.__hiscores.refresh()
+        return await self.__hiscores.refresh()
 
     async def update_user(self, member, name):
         """Update hiscore roles for a user.
@@ -186,7 +186,7 @@ class HiscoresRolesBot(interactions.Extension):
 
     @interactions.extension_component("approve")
     async def approved(self, ctx):
-        if not self.role_updater.refresh_hiscores():
+        if not await self.role_updater.refresh_hiscores():
             return await ctx.send("Failed to load hiscores, try again later.", ephemeral=True)
 
         request = HiscoreRequest.from_embed(ctx.message.embeds[0])
@@ -231,7 +231,7 @@ class HiscoresRolesBot(interactions.Extension):
         if BOT_SETTINGS.admin_role not in ctx.author.roles:
             return await ctx.send("Only admins are allowed to update roles.", ephemeral=True)
 
-        if not self.role_updater.refresh_hiscores():
+        if not await self.role_updater.refresh_hiscores():
             return await ctx.send("Failed to load hiscores, try again later.", ephemeral=True)
 
         await ctx.defer()   # allow for up to 15 minutes to execute command instead of 3 seconds

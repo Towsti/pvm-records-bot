@@ -10,7 +10,6 @@ python_full_version = "3.10.2"
 discord-py-interactions = "*"
 "discord.py" = "*"
 python-dotenv = "*"
-requests = "*"
 dataclasses-json = "*"
 psycopg = {extras = ["binary", "pool"], version = "*"}
 

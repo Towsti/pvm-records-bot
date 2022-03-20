@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
 
-import requests
+import aiohttp
 
 
 logger = logging.getLogger(__name__)
@@ -55,7 +55,7 @@ class Hiscores:
     def __init__(self):
         self.entries = list()
 
-    def __request_hiscores(self):
+    async def __request_hiscores(self):
         """Request the most recent version of the hiscores page.
 
         :return: request response as a list of entries
@@ -63,25 +63,25 @@ class Hiscores:
         """
         data = None
         try:
-            response = requests.get(Hiscores.ENDPOINT)
-        except requests.exceptions.RequestException as e:
+            async with aiohttp.ClientSession() as session:
+                async with session.get(Hiscores.ENDPOINT) as response:
+                    if response.status == 200:
+                        data = await response.json()
+                    else:
+                        logger.warning(f"Request error, status: {response.status}")
+        except aiohttp.ClientError as e:
             logger.warning(f"Request error: {e}")
-        else:
-            if response.status_code == 200:
-                data = response.json()
-            else:
-                logger.warning(f"Request error, status code: {response.status_code}")
         finally:
             return data
 
-    def refresh(self):
+    async def refresh(self):
         """Refresh the hiscores entries with the latest version of pvm-records/hiscores.
         The entries are only updated on a successful refresh.
 
         :return: refresh successful (True), refresh failed (False)
         :rtype: bool
         """
-        data = self.__request_hiscores()
+        data = await self.__request_hiscores()
         if data:
             self.entries = [Entry(**entry) for entry in data]
             refreshed = True
