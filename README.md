@@ -17,6 +17,7 @@ Used exclusively for [PVM records discord](https://discord.gg/NncJz68nsD).
 # pvm-records-bot/.env
 TOKEN="<token>"
 DATABASE_URL="<database>"
+WEBHOOK_TOKEN="<webhook_token>"
 ```
 
 **`bot_settings.json` is used by default and should be configured for the PVM Records Discord.*

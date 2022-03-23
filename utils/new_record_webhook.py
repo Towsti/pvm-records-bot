@@ -1,6 +1,6 @@
-import textwrap
 from dataclasses import dataclass
-from textwrap import dedent
+
+import interactions
 
 from utils.database.user_settings import UserSettings
 
@@ -33,6 +33,11 @@ class NewRecord:
 
         return cls(**embed_dict, players=players, povs=povs)
 
+    @staticmethod
+    def webhook_sent_embed(embed):
+        return interactions.Embed(title=embed.title, fields=embed.fields,
+                                  description="Sent :ballot_box_with_check:", color=0x0693E3)
+
     def set_player_ids(self, users):
         for index, player in enumerate(self.players):
             if user := UserSettings.find_user_by_hiscores_name(player, users):
@@ -42,8 +47,9 @@ class NewRecord:
         formatted = f"{['1st', '2nd', '3rd'][self.place-1]} place {self.boss_mode} {self.boss} - {self.time} has been achieved by {', '.join(self.players)}"
 
         if self.place == 1:
-            formatted += f" - beating the previous time by {self.improvement}!\n"
+            formatted += f" - beating the previous time by {self.improvement}!"
 
+        formatted += '\n'
         formatted += '\n'.join(self.povs)
 
         return formatted
