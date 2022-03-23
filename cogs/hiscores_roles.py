@@ -95,6 +95,10 @@ class HiscoresRolesBot(interactions.Extension):
     async def on_message_create(self, message):
         if int(message.author.id) == BOT_SETTINGS.new_record.webhook:
             await self.__send_new_record(message)
+            if await self.hiscores.refresh():
+                await self.__update_all_hiscore_roles()
+                await self.client._http.send_message(BOT_SETTINGS.admin_channel,
+                                                     "Roles updated :arrows_counterclockwise:")
 
     @interactions.extension_message_command()
     async def resend_new_record(self, ctx):
@@ -106,7 +110,14 @@ class HiscoresRolesBot(interactions.Extension):
             return await ctx.send("this is not a new record webhook", ephemeral=True)
 
         await self.__send_new_record(ctx.target)
-        await ctx.send("new record message send", ephemeral=True)
+
+        if not await self.hiscores.refresh():
+            return await ctx.send("Failed to load hiscores, try again later.", ephemeral=True)
+
+        await ctx.defer()
+
+        await self.__update_all_hiscore_roles()
+        await ctx.send("Roles updated :arrows_counterclockwise:")
 
     async def __send_new_record(self, message):
         embed = message.embeds[0]
@@ -143,7 +154,7 @@ class HiscoresRolesBot(interactions.Extension):
         request = HiscoreRequest.from_embed(ctx.message.embeds[0])
         request_message = await self.__get_original_request_message(ctx, request.channel_id, request.message_id)
 
-        await self.__enable_hiscore_roles(ctx, request.user_id, request.hiscores_name)
+        await self.__enable_hiscore_roles(request.user_id, request.hiscores_name)
 
         await request_message.reply(f"<@{request.user_id}> Approved :white_check_mark:")
         await ctx.edit(embeds=RequestEmbed.approve(ctx.message.embeds[0]), components=None)
@@ -178,30 +189,25 @@ class HiscoresRolesBot(interactions.Extension):
 
         await ctx.defer()   # allow for up to 15 minutes to execute command instead of 3 seconds
 
-        await self.__update_all_hiscore_roles(ctx)
+        await self.__update_all_hiscore_roles()
 
-        await ctx.send(f"Updated roles.")
+        await ctx.send(f"Roles updated :arrows_counterclockwise:")
 
-    async def __update_all_hiscore_roles(self, ctx):
-        """Update the roles for all users in user_settings.
-
-        :param Union[interactions.CommandContext, interactions.ComponentContext] ctx: command/component context
-        """
-        guild = await ctx.get_guild()
+    async def __update_all_hiscore_roles(self):
+        """Update the roles for all users in user_settings."""
         for user in self.user_settings.get_users():
-            member = await self.__get_member_by_id(guild, user.user_id)
+            member = await self.__get_member_by_id(user.user_id)
             if member:
                 await self.role_updater.update_roles(member, self.hiscores.get_entry_by_name(user.hiscores_name))
 
-    async def __enable_hiscore_roles(self, ctx, user_id, name):
+    async def __enable_hiscore_roles(self, user_id, name):
         """Enable hiscores roles for a new user, generally called after approving a role request.
 
         :param ctx: component context
         :param int user_id: user ID
         :param str name: hiscores name
         """
-        guild = await ctx.get_guild()
-        request_author = await self.__get_member_by_id(guild, user_id)
+        request_author = await self.__get_member_by_id(user_id)
         self.user_settings.update(User(user_id, name))
         await self.role_updater.update_roles(request_author, self.hiscores.get_entry_by_name(name))
 
@@ -217,16 +223,15 @@ class HiscoresRolesBot(interactions.Extension):
         channel = interactions.Channel(**await ctx.client.get_channel(channel_id), _client=ctx.client)
         return await channel.get_message(message_id)
 
-    async def __get_member_by_id(self, guild, user_id):
-        """Get a guild member from the user ID.
+    async def __get_member_by_id(self, member_id):
+        """Get a member from the user ID.
 
-        :param interactions.Guild guild: guild to look for user
-        :param int user_id: user ID
+        :param int member_id: member ID
         :return: a member or None when no member was found
         :rtype: interactions.Member
         """
         try:
-            member = await guild.get_member(user_id)
+            member = interactions.Member(**await self.client._http.get_member(BOT_SETTINGS.guild, member_id))
         except Exception as e:
             logger.warning(e)
         else:
