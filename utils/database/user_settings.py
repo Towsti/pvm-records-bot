@@ -52,3 +52,15 @@ class UserSettings(DatabaseClient):
             records = list(cur)
             if len(records) > 0:
                 return User(*records[0])
+
+    @staticmethod
+    def find_user_by_id(user_id, users):
+        for user in users:
+            if user_id == user.user_id:
+                return user
+
+    @staticmethod
+    def find_user_by_hiscores_name(hiscores_name, users):
+        for user in users:
+            if hiscores_name == user.hiscores_name:
+                return user

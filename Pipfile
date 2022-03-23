@@ -12,5 +12,6 @@ discord-py-interactions = "*"
 python-dotenv = "*"
 dataclasses-json = "*"
 psycopg = {extras = ["binary", "pool"], version = "*"}
+enhanced = "*"
 
 [dev-packages]

@@ -4,13 +4,18 @@ import logging
 from dotenv import load_dotenv
 import interactions
 
+from utils.bot_settings import BOT_SETTINGS
+
 
 logging.basicConfig(level=logging.INFO)
 load_dotenv()
 
 
 client = interactions.Client(token=os.getenv('TOKEN'),
-                             intents=interactions.Intents.DEFAULT | interactions.Intents.GUILD_PRESENCES)
+                             intents=interactions.Intents.DEFAULT | interactions.Intents.GUILD_PRESENCES | interactions.Intents.GUILD_MESSAGE_CONTENT)
+
+client.load("interactions.ext.enhanced", debug_scope=BOT_SETTINGS.guild)
+
 
 # load all cogs in cogs/ folder
 for filename in os.listdir("./cogs"):

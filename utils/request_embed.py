@@ -30,5 +30,14 @@ class RequestEmbed:
     def get_embed(ctx, **embed_kwargs):
         author = interactions.EmbedAuthor(name=ctx.author.user.username, icon_url=ctx.author.user.avatar_url)
         footer = interactions.EmbedFooter(text=RequestData.footer_text(ctx.channel_id, ctx.message.id))
+        return interactions.Embed(author=author, footer=footer, color=431075, **embed_kwargs)
 
-        return interactions.Embed(author=author, footer=footer, **embed_kwargs)
+    @staticmethod
+    def approve(embed):
+        return interactions.Embed(title=embed.title, fields=embed.fields, author=embed.author, footer=embed.footer,
+                                  description="Approved :white_check_mark:", color=53380)
+
+    @staticmethod
+    def decline(embed):
+        return interactions.Embed(title=embed.title, fields=embed.fields, author=embed.author, footer=embed.footer,
+                                  description="Declined :x:", color=15406156)

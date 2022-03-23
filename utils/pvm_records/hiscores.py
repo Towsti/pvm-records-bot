@@ -17,6 +17,10 @@ class Entry:
     second_places: int
     third_places: int
 
+    @classmethod
+    def empty(cls, name=''):
+        return cls(0, 0, name, 0, 0, 0, 0)
+
     def is_hiscores_leader(self):
         """Check if the entry is rank 1
 
@@ -47,6 +51,24 @@ class Entry:
         :return: best place is third (True), best place is 1nd, 2rd or lower than 3rd (False)
         """
         return True if self.first_places == 0 and self.second_places == 0 and self.third_places >= 1 else False
+
+    def get_eligible_roles(self, roles):
+        eligible_roles = list()
+
+        eligible_roles.append((roles.hiscores_leader, self.is_hiscores_leader()))
+        eligible_roles.append((roles.first_place_holder, self.first_best()))
+        eligible_roles.append((roles.second_place_holder, self.second_best()))
+        eligible_roles.append((roles.third_place_holder, self.third_best()))
+
+        highest_threshold = False
+        for score_threshold, role_id in roles.scores:
+            if not highest_threshold and self.score >= score_threshold:
+                eligible_roles.append((role_id, True))
+                highest_threshold = True
+            else:
+                eligible_roles.append((role_id, False))
+
+        return eligible_roles
 
 
 class Hiscores:
@@ -97,5 +119,4 @@ class Hiscores:
         :return: a single entry containing the name and other stats or an empty entry when the name isn't found.
         :rtype: Entry
         """
-        return next((entry for entry in self.entries if entry.name == name),
-                    Entry(0, 0, name, 0, 0, 0, 0))
+        return next((entry for entry in self.entries if entry.name == name), Entry.empty(name))

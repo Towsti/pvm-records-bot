@@ -19,10 +19,17 @@ class HiscoreRoles(DataClassJsonMixin):
 
 
 @dataclass(frozen=True)
+class NewRecord(DataClassJsonMixin):
+    webhook: int
+    channel: int
+
+
+@dataclass(frozen=True)
 class BotSettings(DataClassJsonMixin):
     guild: int
     admin_channel: int
     admin_role: int
+    new_record: NewRecord
     hiscore_roles: HiscoreRoles
 
 
