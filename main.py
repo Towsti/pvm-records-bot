@@ -7,7 +7,7 @@ import interactions
 from utils.bot_settings import BOT_SETTINGS
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 load_dotenv()
 
 
