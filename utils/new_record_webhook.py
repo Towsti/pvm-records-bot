@@ -44,7 +44,7 @@ class NewRecord:
                 self.players[index] = f"<@{user.user_id}>"
 
     def __str__(self):
-        formatted = f"{['1st', '2nd', '3rd'][self.place-1]} place {self.boss_mode} {self.boss} - {self.time} has been achieved by {', '.join(self.players)}"
+        formatted = f"{['1st', '2nd', '3rd'][self.place-1]} place {self.team_size} {self.boss} - {self.boss_mode} - {self.time} has been achieved by {', '.join(self.players)}"
 
         if self.place == 1:
             formatted += f" - beating the previous time by {self.improvement}!"
