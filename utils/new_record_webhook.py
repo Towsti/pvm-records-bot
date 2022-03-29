@@ -12,7 +12,7 @@ class NewRecord:
     boss_mode: str
     time: str
     place: int
-    improvement: str
+    improvement: float
     players: list[str]
     povs: list[str]
 
@@ -26,6 +26,8 @@ class NewRecord:
                 players.append(field.value)
             elif field.name == 'place':
                 embed_dict['place'] = int(field.value)
+            elif field.name == 'improvement':
+                embed_dict['improvement'] = float(field.value)
             elif field.name == 'pov':
                 povs.append(field.value)
             else:
@@ -44,10 +46,12 @@ class NewRecord:
                 self.players[index] = f"<@{user.user_id}>"
 
     def __str__(self):
-        formatted = f"{['1st', '2nd', '3rd'][self.place-1]} place {self.team_size} {self.boss} - {self.boss_mode} - {self.time} has been achieved by {', '.join(self.players)}"
+        place_ordinal = ['1st', '2nd', '3rd'][self.place-1]
 
-        if self.place == 1:
-            formatted += f" - beating the previous time by {self.improvement}!"
+        formatted = f"{place_ordinal} place {self.team_size} {self.boss} - {self.boss_mode} - {self.time} has been achieved by {', '.join(self.players)} "
+
+        if self.improvement > 0.1:
+            formatted += f" - beating the previous time by {self.improvement} seconds!"
 
         formatted += '\n'
         formatted += '\n'.join(self.povs)
