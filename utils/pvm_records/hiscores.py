@@ -72,7 +72,7 @@ class Entry:
 
 
 class Hiscores:
-    ENDPOINT = "http://pvm-records.com/v1/leaderboard"
+    ENDPOINT = "https://pvm-records.com/v1/leaderboard"
 
     def __init__(self):
         self.entries = list()
