@@ -61,7 +61,7 @@ class RoleUpdater:
     async def clear_roles(self, member):
         logger.info(f"clearing roles for {member.user.username}")
         for role, eligible in Entry.empty().get_eligible_roles(self.__roles):
-            await self.__update_role(member, role, eligible)
+           await self.__update_role(member, role, eligible)
 
     async def update_roles(self, member, hiscores_entry):
         for role, eligible in hiscores_entry.get_eligible_roles(self.__roles):
@@ -83,13 +83,38 @@ class HiscoresRolesBot(interactions.Extension):
         self.hiscores = Hiscores()
         self.role_updater = RoleUpdater(self.client._http)
 
-    @interactions.extension_listener()
-    async def on_guild_create(self, guild):
+    @interactions.extension_command()
+    async def experimental_update_roles(self, ctx):
+        """Experimental implementation of update-roles"""
+        if not await self.hiscores.refresh():
+            return await ctx.send("Failed to load hiscores, try again later.", ephemeral=True)
+
+        await ctx.defer()
+
         configured_users = self.user_settings.get_users()
-        for member in guild.members:
-            if not UserSettings.find_user_by_id(int(member.id), configured_users):
+
+        members = await self.client._http.get_list_of_members(BOT_SETTINGS.guild, 1000)
+        for member_dict in members:
+            member = interactions.Member(**member_dict)
+            if not member.roles:
+                # member.roles attribute now set to None instead of [] when there are no roles
+                member.roles = list()
+            if user_settings := UserSettings.find_user_by_id(int(member.id), configured_users):
+                entry = self.hiscores.get_entry_by_name(user_settings.hiscores_name)
+                await self.role_updater.update_roles(member, entry)
+            else:
                 await self.role_updater.clear_roles(member)
-        logger.info("bot ready")
+
+        await ctx.send("done", ephemeral=True)
+
+
+    # @interactions.extension_listener()
+    # async def on_guild_create(self, guild):
+    #     configured_users = self.user_settings.get_users()
+    #     for member in guild.members:
+    #         if not UserSettings.find_user_by_id(int(member.id), configured_users):
+    #             await self.role_updater.clear_roles(member)
+    #     logger.info("bot ready")
 
     @interactions.extension_listener()
     async def on_message_create(self, message):
