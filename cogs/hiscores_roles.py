@@ -92,12 +92,6 @@ class HiscoresRolesBot(interactions.Extension):
         self.hiscores = Hiscores()
         self.role_updater = RoleUpdater(self.client._http)
 
-    @interactions.extension_command()
-    async def experimental_update_roles(self, ctx):
-        """Experimental implementation of update-roles"""
-        if not await self.hiscores.refresh():
-            return await ctx.send("Failed to load hiscores, try again later.", ephemeral=True)
-
     @interactions.extension_listener()
     async def on_message_create(self, message):
         if int(message.author.id) == BOT_SETTINGS.new_record.webhook:
