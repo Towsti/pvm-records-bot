@@ -68,12 +68,21 @@ class RoleUpdater:
             await self.__update_role(member, role, eligible)
 
     async def __update_role(self, member, role, eligible):
-        if eligible:
-            if role not in member.roles:
-                await self.__http.add_member_role(self.__guild, member.id, role)
-        else:
-            if role in member.roles:
-                await self.__http.remove_member_role(self.__guild, member.id, role)
+        if not member.roles:
+            # todo: remove when no longer required
+            # member.roles attribute now set to None instead of [] when there are no roles
+            member.roles = list()
+
+        try:
+            if eligible:
+                if role not in member.roles:
+                    await self.__http.add_member_role(self.__guild, member.id, role)
+            else:
+                if role in member.roles:
+                    await self.__http.remove_member_role(self.__guild, member.id, role)
+        except Exception as e:
+            # lazy exception handling in case user leaves when role is being updated
+            logger.warning(e)
 
 
 class HiscoresRolesBot(interactions.Extension):
@@ -89,33 +98,6 @@ class HiscoresRolesBot(interactions.Extension):
         if not await self.hiscores.refresh():
             return await ctx.send("Failed to load hiscores, try again later.", ephemeral=True)
 
-        await ctx.defer()
-
-        configured_users = self.user_settings.get_users()
-
-        members = await self.client._http.get_list_of_members(BOT_SETTINGS.guild, 1000)
-        for member_dict in members:
-            member = interactions.Member(**member_dict)
-            if not member.roles:
-                # member.roles attribute now set to None instead of [] when there are no roles
-                member.roles = list()
-            if user_settings := UserSettings.find_user_by_id(int(member.id), configured_users):
-                entry = self.hiscores.get_entry_by_name(user_settings.hiscores_name)
-                await self.role_updater.update_roles(member, entry)
-            else:
-                await self.role_updater.clear_roles(member)
-
-        await ctx.send("done", ephemeral=True)
-
-
-    # @interactions.extension_listener()
-    # async def on_guild_create(self, guild):
-    #     configured_users = self.user_settings.get_users()
-    #     for member in guild.members:
-    #         if not UserSettings.find_user_by_id(int(member.id), configured_users):
-    #             await self.role_updater.clear_roles(member)
-    #     logger.info("bot ready")
-
     @interactions.extension_listener()
     async def on_message_create(self, message):
         if int(message.author.id) == BOT_SETTINGS.new_record.webhook:
@@ -127,7 +109,8 @@ class HiscoresRolesBot(interactions.Extension):
 
     @interactions.extension_message_command()
     async def resend_new_record(self, ctx):
-        if BOT_SETTINGS.admin_role not in ctx.author.roles:
+        if ctx.author.roles is None or BOT_SETTINGS.admin_role not in ctx.author.roles:
+            # todo: can probably remove as webhooks are send in the admin channel
             return await ctx.send(f"Only those with <@&{BOT_SETTINGS.admin_role}> are allowed to update roles.",
                                   ephemeral=True)
 
@@ -157,7 +140,7 @@ class HiscoresRolesBot(interactions.Extension):
 
     @interactions.extension_command()
     async def enable_hiscores_roles(self, ctx, name: EnhancedOption(str, "pvm-records.com/hiscores name")):
-        """Enable discord roles based on pvm-records.com/hiscores."""
+        """Enable hiscore roles for a name on pvm-records.com/hiscores."""
         if self.user_settings.get_user_by_hiscores_name(name):
             return await ctx.send(f"Hiscore roles already enabled for {name}.", ephemeral=True)
 
@@ -194,7 +177,7 @@ class HiscoresRolesBot(interactions.Extension):
 
     @interactions.extension_command()
     async def disable_hiscores_roles(self, ctx):
-        """Disabled discord roles for pvm-records.com/hiscores."""
+        """Disabled hiscore roles."""
         if user := self.user_settings.get_user_by_id(int(ctx.author.id)):
             self.user_settings.delete(user.user_id)
             await self.role_updater.clear_roles(ctx.author)
@@ -203,9 +186,9 @@ class HiscoresRolesBot(interactions.Extension):
             await ctx.send(f"Hiscores roles already disabled.", ephemeral=True)
 
     @interactions.extension_command()
-    async def update_roles_manually(self, ctx):
-        """Refresh roles manually (only for admins)"""
-        if BOT_SETTINGS.admin_role not in ctx.author.roles:
+    async def update_roles(self, ctx):
+        """Refresh roles manually (admins only)"""
+        if ctx.author.roles is None or BOT_SETTINGS.admin_role not in ctx.author.roles:
             return await ctx.send(f"Only those with <@&{BOT_SETTINGS.admin_role}> are allowed to update roles.",
                                   ephemeral=True)
 
@@ -219,11 +202,19 @@ class HiscoresRolesBot(interactions.Extension):
         await ctx.send(f"Roles updated :arrows_counterclockwise:")
 
     async def __update_all_hiscore_roles(self):
-        """Update the roles for all users in user_settings."""
-        for user in self.user_settings.get_users():
-            member = await self.__get_member_by_id(user.user_id)
-            if member:
-                await self.role_updater.update_roles(member, self.hiscores.get_entry_by_name(user.hiscores_name))
+        """Update the roles for all users configured in user settings database.
+        Clear roles for all users that aren't configured in user settings.
+        """
+        configured_users = self.user_settings.get_users()
+
+        members = await self.client._http.get_list_of_members(BOT_SETTINGS.guild, 1000)
+        for member_dict in members:
+            member = interactions.Member(**member_dict)
+            if user_settings := UserSettings.find_user_by_id(int(member.id), configured_users):
+                entry = self.hiscores.get_entry_by_name(user_settings.hiscores_name)
+                await self.role_updater.update_roles(member, entry)
+            else:
+                await self.role_updater.clear_roles(member)
 
     async def __enable_hiscore_roles(self, user_id, name):
         """Enable hiscores roles for a new user, generally called after approving a role request.
