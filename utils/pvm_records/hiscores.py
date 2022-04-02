@@ -120,3 +120,6 @@ class Hiscores:
         :rtype: Entry
         """
         return next((entry for entry in self.entries if entry.name == name), Entry.empty(name))
+
+    def entry_exists(self, entry):
+        return entry in self.entries

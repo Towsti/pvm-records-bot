@@ -5,8 +5,7 @@ import logging
 
 import interactions
 from interactions.ext.enhanced import EnhancedOption
-from interactions.ext.enhanced.components import ActionRow
-from interactions.ext.enhanced.components import Button
+from interactions.ext.enhanced.components import ActionRow, Button
 
 from utils.database.user_settings import UserSettings, User
 from utils.pvm_records.hiscores import Hiscores, Entry
@@ -134,7 +133,7 @@ class HiscoresRolesBot(interactions.Extension):
 
     @interactions.extension_command()
     async def enable_hiscores_roles(self, ctx, name: EnhancedOption(str, "pvm-records.com/hiscores name")):
-        """Enable hiscore roles for a name on pvm-records.com/hiscores."""
+        """Enable hiscore roles for a name on pvm-records.com/hiscores (case sensitive)."""
         if self.user_settings.get_user_by_hiscores_name(name):
             return await ctx.send(f"Hiscore roles already enabled for {name}.", ephemeral=True)
 
