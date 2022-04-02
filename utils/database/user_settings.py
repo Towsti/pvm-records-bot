@@ -10,21 +10,16 @@ class User:
 
 
 class UserSettings(DatabaseClient):
-    def __init__(self):
-        super().__init__()
-
     def delete(self, user_id):
-        with self._database.query() as (conn, cur):
-            cur.execute("""
+        with self._database.query() as conn:
+            conn.execute("""
             DELETE FROM users
             WHERE user_id = %s
             """, (user_id,))
 
-            conn.commit()
-
     def update(self, user):
-        with self._database.query() as (conn, cur):
-            cur.execute("""
+        with self._database.query() as conn:
+            conn.execute("""
             INSERT INTO users (user_id, hiscores_name) 
             VALUES (%s, %s)
             ON CONFLICT (user_id) DO UPDATE 
@@ -32,26 +27,17 @@ class UserSettings(DatabaseClient):
                   hiscores_name = excluded.hiscores_name;
             """, (user.user_id, user.hiscores_name))
 
-            conn.commit()
-
     def get_users(self):
-        with self._database.query() as (conn, cur):
-            cur.execute("SELECT * FROM users")
-            return [User(*record) for record in cur]
+        with self._database.query(User) as conn:
+            return conn.execute("SELECT * FROM users").fetchall()
 
     def get_user_by_id(self, user_id):
-        with self._database.query() as (conn, cur):
-            cur.execute("SELECT * FROM users WHERE user_id = %s", (user_id,))
-            records = list(cur)
-            if len(records) > 0:
-                return User(*records[0])
+        with self._database.query(User) as conn:
+            return conn.execute("SELECT * FROM users WHERE user_id = %s", (user_id,)).fetchone()
 
     def get_user_by_hiscores_name(self, hiscores_name):
-        with self._database.query() as (conn, cur):
-            cur.execute("SELECT * FROM users WHERE hiscores_name = %s", (hiscores_name,))
-            records = list(cur)
-            if len(records) > 0:
-                return User(*records[0])
+        with self._database.query(User) as conn:
+            return conn.execute("SELECT * FROM users WHERE hiscores_name = %s", (hiscores_name,)).fetchone()
 
     @staticmethod
     def find_user_by_id(user_id, users):

@@ -4,6 +4,7 @@ import atexit
 
 from dotenv import load_dotenv
 from psycopg_pool import ConnectionPool
+from psycopg.rows import class_row
 
 
 load_dotenv()
@@ -31,10 +32,11 @@ class Database(metaclass=SingletonMeta):
         atexit.register(self.__pool.close)
 
     @contextmanager
-    def query(self):
+    def query(self, class_=None):
         with self.__pool.connection() as conn:
-            with conn.cursor() as cur:
-                yield conn, cur
+            if class_:
+                conn.row_factory = class_row(class_)
+            yield conn
 
 
 class DatabaseClient(metaclass=SingletonMeta):
