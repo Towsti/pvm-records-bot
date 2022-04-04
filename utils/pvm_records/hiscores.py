@@ -54,7 +54,6 @@ class Entry:
 
     def get_eligible_roles(self, roles):
         eligible_roles = list()
-
         eligible_roles.append((roles.hiscores_leader, self.is_hiscores_leader()))
         eligible_roles.append((roles.first_place_holder, self.first_best()))
         eligible_roles.append((roles.second_place_holder, self.second_best()))
@@ -103,8 +102,7 @@ class Hiscores:
         :return: refresh successful (True), refresh failed (False)
         :rtype: bool
         """
-        data = await self.__request_hiscores()
-        if data:
+        if data := await self.__request_hiscores():
             self.entries = [Entry(**entry) for entry in data]
             refreshed = True
         else:

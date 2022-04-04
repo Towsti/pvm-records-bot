@@ -7,7 +7,7 @@ name = "pypi"
 python_full_version = "3.10.2"
 
 [packages]
-discord-py-interactions = {ref = "unstable", git = "https://github.com/interactions-py/library.git"}
+discord-py-interactions = {ref = "4eaa09f0f7a73cb572944afd175c1f7cf0696bb6", git = "https://github.com/interactions-py/library.git"}
 "discord.py" = "*"
 python-dotenv = "*"
 dataclasses-json = "*"

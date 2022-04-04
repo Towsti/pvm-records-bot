@@ -2,7 +2,7 @@ from dataclasses import dataclass
 
 import interactions
 
-from utils.database.user_settings import UserSettings
+from ..database.user_settings import UserSettings
 
 
 @dataclass
@@ -42,12 +42,11 @@ class NewRecord:
 
     def set_player_ids(self, users):
         for index, player in enumerate(self.players):
-            if user := UserSettings.find_user_by_hiscores_name(player, users):
+            if user := UserSettings.find_user_by_display_name(player, users):
                 self.players[index] = f"<@{user.user_id}>"
 
     def __str__(self):
         place_ordinal = ['1st', '2nd', '3rd'][self.place-1]
-
         formatted = f"{place_ordinal} place {self.team_size} {self.boss} - {self.boss_mode} - {self.time} has been achieved by {', '.join(self.players)} "
 
         if self.improvement > 0.1:
