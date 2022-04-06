@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import re
 
 from interactions import EmbedField
+
 from .request import RequestEmbed, RequestData
 
 
@@ -19,6 +20,12 @@ class LinkRequest(RequestData):
 
     @classmethod
     def from_embed(cls, embed):
+        """Parse link request data from a request embed.
+
+        :param interactions.Embed embed: request embed
+        :return: parsed request data
+        :rtype: LinkRequest
+        """
         request = RequestData.from_embed(embed)
         result = re.match(r"<@(\d{18})>", request.fields[LinkRequest._field_names.user_id])
         return cls(**request.__dict__,
@@ -27,6 +34,15 @@ class LinkRequest(RequestData):
 
     @staticmethod
     def create_embed(ctx, name, proof=None, description=''):
+        """Create link request embed.
+
+        :param interactions.CommandContext ctx: command context
+        :param str name: pvm-records.com display name
+        :param str proof: optional proof message
+        :param str description: description indicating if the display name is on pvm-records.com
+        :return: request embed
+        :rtype: interactions.Embed
+        """
         fields = [
             EmbedField(
                 name=LinkRequest._field_names.user_id,
@@ -45,4 +61,4 @@ class LinkRequest(RequestData):
                 value=proof,
                 inline=False
             ))
-        return RequestEmbed.get_embed(ctx, title="Hiscore roles request", fields=fields, description=description)
+        return RequestEmbed.get_embed(ctx, title="Link name request", fields=fields, description=description)

@@ -19,6 +19,12 @@ class Entry:
 
     @classmethod
     def empty(cls, name=''):
+        """Empty Entry to avoid a lot of checking for None.
+
+        :param name: optional entry name (default = '')
+        :return: Entry instance
+        :rtype: Entry
+        """
         return cls(0, 0, name, 0, 0, 0, 0)
 
     def is_hiscores_leader(self):
@@ -71,6 +77,7 @@ class Entry:
 
 
 class Hiscores:
+    """Manage pvm-records.com/leaderboard endpoint."""
     ENDPOINT = "https://pvm-records.com/v1/leaderboard"
 
     def __init__(self):
@@ -96,7 +103,7 @@ class Hiscores:
             return data
 
     async def refresh(self):
-        """Refresh the hiscores entries with the latest version of pvm-records/hiscores.
+        """Refresh the hiscores entries cache with the latest version of pvm-records/hiscores.
         The entries are only updated on a successful refresh.
 
         :return: refresh successful (True), refresh failed (False)
@@ -111,7 +118,7 @@ class Hiscores:
         return refreshed
 
     def get_entry_by_name(self, name):
-        """Search for a specifc hiscores entry using the name.
+        """Search for a specifc hiscores entry using the name in cached entries.
 
         :param str name: name (rsn) of the entry to search for
         :return: a single entry containing the name and other stats or an empty entry when the name isn't found.
@@ -120,4 +127,10 @@ class Hiscores:
         return next((entry for entry in self.entries if entry.name == name), Entry.empty(name))
 
     def entry_exists(self, entry):
+        """Check if entry exists in cached entries.
+
+        :param Entry entry: entry to search for
+        :return: entry found (True), no entry found (False)
+        :rtype: bool
+        """
         return entry in self.entries

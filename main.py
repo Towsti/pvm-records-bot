@@ -10,8 +10,8 @@ from utils.bot_settings import BOT_SETTINGS
 logging.basicConfig(level=logging.INFO)
 logging.getLogger('psycopg').level = logging.DEBUG
 
-load_dotenv()
 
+load_dotenv()
 
 client = interactions.Client(token=os.getenv('TOKEN'),
                              intents=interactions.Intents.DEFAULT | interactions.Intents.GUILD_MEMBERS | interactions.Intents.GUILD_MESSAGE_CONTENT)

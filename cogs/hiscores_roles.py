@@ -9,14 +9,17 @@ from utils.database.user_settings import UserSettings, UserSettingsObserver
 from utils.pvm_records.hiscores import Hiscores, Entry
 from utils.embeds.new_record_webhook import NewRecord
 
+
 logger = logging.getLogger(__name__)
 
-load_dotenv()
 
+load_dotenv()
 WEBHOOK_TOKEN = os.getenv('WEBHOOK_TOKEN')
 
 
 class RoleUpdater:
+    """Class that updates hiscore roles."""
+
     def __init__(self, http_client):
         super().__init__()
         self.__http = http_client
@@ -24,14 +27,29 @@ class RoleUpdater:
         self.__roles = BOT_SETTINGS.hiscore_roles
 
     async def clear_roles(self, member):
+        """Clear hiscore roles for a Discord member.
+
+        :param interactions.Member member: Discord member that is updated
+        """
         for role, eligible in Entry.empty().get_eligible_roles(self.__roles):
             await self.__update_role(member, role, eligible)
 
     async def update_roles(self, member, hiscores_entry):
+        """Update hiscore roles for a Discord member.
+
+        :param interactions.Member member: Discord member that is updated
+        :param Entry hiscores_entry: hiscores entry that is used to determine eligible roles
+        """
         for role, eligible in hiscores_entry.get_eligible_roles(self.__roles):
             await self.__update_role(member, role, eligible)
 
     async def __update_role(self, member, role, eligible):
+        """Update a role for a Discord member based on eligibility.
+
+        :param interactions.Member member: Discord member that is updated
+        :param int role: role ID
+        :param bool eligible: eligible for role (adds role), not eligible for role (removes role)
+        """
         if not member.roles:
             # todo: remove when no longer required
             # member.roles attribute now set to None instead of [] when there are no roles
@@ -40,9 +58,11 @@ class RoleUpdater:
         try:
             if eligible:
                 if role not in member.roles:
+                    # only add role if the user doesn't have the role yet to avoid unnecessary requests.
                     await self.__http.add_member_role(self.__guild, member.id, role)
             else:
                 if role in member.roles:
+                    # only clear if the user has the role to avoid unnecessary requests.
                     await self.__http.remove_member_role(self.__guild, member.id, role)
         except Exception as e:
             # lazy exception handling in case user leaves when role is being updated
@@ -50,7 +70,9 @@ class RoleUpdater:
 
 
 class HiscoresRolesBot(interactions.Extension, UserSettingsObserver):
+    """Bot that manages hiscore roles for users in user settings database."""
     # todo: implement observer as decorator to avoid multiple inheritance
+
     def __init__(self, client):
         self.client = client
         self.role_updater = RoleUpdater(client._http)
@@ -59,11 +81,20 @@ class HiscoresRolesBot(interactions.Extension, UserSettingsObserver):
 
     @interactions.extension_listener()
     async def on_ready(self):
+        """Bot ready event triggers when the bot boots up.
+        Subscribes to user setting database changes.
+        """
         self.user_settings.subscribe(self)
 
     @interactions.extension_listener()
     async def on_message_create(self, message):
+        """Event triggers whenever a new message is sent in the guild the bot is active in.
+        Used to detect new record webhooks.
+
+        :param interactions.Message message: new message
+        """
         if int(message.author.id) == BOT_SETTINGS.new_record.webhook:
+            # new record webhook received
             await self.__send_new_record(message)
             if await self.hiscores.refresh():
                 await self.__update_all_hiscore_roles()
@@ -72,7 +103,10 @@ class HiscoresRolesBot(interactions.Extension, UserSettingsObserver):
 
     @interactions.extension_command()
     async def refresh_hiscores_roles(self, ctx):
-        """Refresh hiscores roles manually (admins only)."""
+        """Refresh hiscores roles manually (admins only).
+
+        :param interactions.CommandContext ctx: command context
+        """
         if ctx.author.roles is None or BOT_SETTINGS.admin_role not in ctx.author.roles:
             return await ctx.send(f"Only those with <@&{BOT_SETTINGS.admin_role}> are allowed to update roles.",
                                   ephemeral=True)
@@ -87,7 +121,10 @@ class HiscoresRolesBot(interactions.Extension, UserSettingsObserver):
 
     @interactions.extension_message_command()
     async def resend_new_record(self, ctx):
-        """Resend a new record webhook."""
+        """Resend a new record webhook.
+
+        :param interactions.CommandContext ctx: command context
+        """
         if int(ctx.target.author.id) != BOT_SETTINGS.new_record.webhook:
             return await ctx.send("this is not a new record webhook", ephemeral=True)
 
@@ -139,7 +176,7 @@ class HiscoresRolesBot(interactions.Extension, UserSettingsObserver):
     async def __send_new_record(self, message):
         """Send a new record message from a new record embed.
 
-        :param message: new record webhook message
+        :param interactions.Message message: new record webhook message
         """
         embed = message.embeds[0]
 

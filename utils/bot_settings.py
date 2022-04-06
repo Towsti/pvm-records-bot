@@ -33,5 +33,6 @@ class BotSettings(DataClassJsonMixin):
     hiscore_roles: HiscoreRoles
 
 
+# load bot settings, use versioned bot_settings.json by default
 with open(os.environ.get('BOT_SETTINGS', 'bot_settings.json'), 'r') as file:
     BOT_SETTINGS = BotSettings.from_dict(json.load(file))

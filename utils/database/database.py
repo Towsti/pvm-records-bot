@@ -8,13 +8,12 @@ from psycopg.rows import class_row
 
 
 load_dotenv()
+DATABASE_URL = os.getenv('DATABASE_URL')
 
 
 class SingletonMeta(type):
-    """
-    Singleton implementation from https://refactoring.guru/design-patterns/singleton/python/example#example-0.
-    Ensures the same user settings are used for all cogs.
-    """
+    """Singleton to ensure a single db connection across all clients."""
+
     _instances = {}
 
     def __call__(cls, *args, **kwargs):
@@ -25,14 +24,19 @@ class SingletonMeta(type):
 
 
 class Database(metaclass=SingletonMeta):
-    DATABASE_URL = os.getenv('DATABASE_URL')
+    """Main database connection, only 1 instance allowed."""
 
     def __init__(self):
-        self.__pool = ConnectionPool(Database.DATABASE_URL, min_size=0, max_size=5)
+        self.__pool = ConnectionPool(DATABASE_URL, min_size=0, max_size=5)
         atexit.register(self.__pool.close)
 
     @contextmanager
     def query(self, class_=None):
+        """Perform a query and return the connection object.
+
+        :param class_: optional row factory to return rows as a dataclass (e.g. class_=User)
+        :return: pool connection
+        """
         with self.__pool.connection() as conn:
             if class_:
                 conn.row_factory = class_row(class_)
